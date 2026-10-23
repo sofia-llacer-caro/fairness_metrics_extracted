@@ -1,4 +1,4 @@
 Benchmark for fairness (alongside utility) for vision-language models on retrieval tasks. It is comprised of three parts:
 1. Dataset --> set of images and annotations made in-house and centered around life beyong jobs: reproduction and affects, rooted in intersectional feminist "reivindicaciones". It was performed in two rounds of fairly compensated annotation: one before the participation workshops and one after. The current version of the dataset includes the remarks and requests made by the participants of the workshops (especially on which prompts were annotated).
 2. A multimetric approach for "fairness measurement" was chosen under the idea that we must divert from trying to optimize single metrics alone. They also operationalize fairness differently, so they hold complementary information on the same construct.
-3. 
+3. Utility metrics --> recall@k is used to measure retrieval performance, so that fairness is always evaluated alongside how well the model actually works.

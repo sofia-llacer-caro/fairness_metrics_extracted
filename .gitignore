@@ -1,3 +1,6 @@
 toy_example/
 DECISIONS.md
 INVENTORY.md
+data_annotation/
+__pycache__/
+*.pyc
