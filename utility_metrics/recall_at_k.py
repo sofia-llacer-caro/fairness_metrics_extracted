@@ -10,37 +10,34 @@ The final number per model is the average over all prompts.
 Based on toy_example/reference_clip_benchmark.py (same scores matrix,
 same positive_pairs matrix, same recall formula).
 
-Expected annotation file (JSON): prompt -> list of image filenames that are
-correct for that prompt. Filenames are relative to IMAGE_DIR.
+Annotation file: the CSV export of the annotation tool. Each row's `term` is
+the prompt and its `image_path` is a right image for it (filename in IMAGE_DIR).
 
-    {
-        "a photo of a doctor": ["img_001.jpg", "img_014.jpg"],
-        "a photo of a nurse":  ["img_003.jpg"]
-    }
-
-Run:  python utility_metrics/recall_at_k.py
+Run from the repo root:  python utility_metrics/recall_at_k.py
 """
 
-import json
+import csv
 import os
 
 import open_clip
 import torch
 import torch.nn.functional as F
-from PIL import Image
+from PIL import Image, ImageFile
+
+# A few downloaded images are slightly cut off; load them anyway.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 # ---------------------------------------------------------------------------
 # Settings: edit these.
 # ---------------------------------------------------------------------------
-IMAGE_DIR = "path/to/images"               # folder with all the images
-ANNOTATIONS = "path/to/annotations.json"   # prompt -> list of right images
+IMAGE_DIR = "data_annotation/images"                          # folder with all the images
+ANNOTATIONS = "data_annotation/intervisions_annotations.csv"  # CSV export of the annotation tool
 K_LIST = [1, 5, 10]
 
 # Models to compare, as (architecture, pretrained weights) for open_clip.
 MODELS = [
     ("ViT-B-32", "openai"),
-    ("ViT-L-14", "openai"),
 ]
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -49,12 +46,24 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # ---------------------------------------------------------------------------
 # Load the data.
 # ---------------------------------------------------------------------------
-with open(ANNOTATIONS) as f:
-    annotations = json.load(f)
+# Build prompt -> list of right images from the CSV: the term is the prompt,
+# image_path is the filename in IMAGE_DIR. Rows whose image is not in the
+# folder are skipped.
+annotations = {}
+skipped = 0
+with open(ANNOTATIONS, encoding="utf-8") as f:
+    for row in csv.DictReader(f):
+        if not os.path.isfile(os.path.join(IMAGE_DIR, row["image_path"])):
+            skipped += 1
+            continue
+        annotations.setdefault(row["term"], []).append(row["image_path"])
+print(f"Skipped {skipped} annotations with no image in {IMAGE_DIR}")
 
 # Every image in the folder is a candidate in the retrieval, not only the
 # annotated ones. Sorted so the image order is the same for every model.
-image_names = sorted(os.listdir(IMAGE_DIR))
+# Empty files (failed downloads on the annotation server) are left out.
+image_names = sorted(n for n in os.listdir(IMAGE_DIR)
+                     if os.path.getsize(os.path.join(IMAGE_DIR, n)) > 0)
 prompts = list(annotations.keys())
 
 # positive_pairs[t, i] = True if image i is a right answer for prompt t.
